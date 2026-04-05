@@ -1,52 +1,71 @@
-const mongoose = require('mongoose');
+const { pool } = require('../config/db');
 const bcrypt = require('bcryptjs');
 
-const userSchema = new mongoose.Schema({
-    phone: {
-        type: String,
-        required: [true, 'Telefon raqam kiritilishi shart'],
-        unique: true,
-        trim: true
+const User = {
+    // Telefon raqam bo'yicha topish
+    async findByPhone(phone, includeOtp = false) {
+        const fields = includeOtp
+            ? '*'
+            : 'id, phone, name, password, telegram_chat_id, is_verified, created_at';
+        const result = await pool.query(
+            `SELECT ${fields} FROM users WHERE phone = $1`,
+            [phone]
+        );
+        return result.rows[0] || null;
     },
-    name: {
-        type: String,
-        required: [true, 'Ism kiritilishi shart'],
-        trim: true,
-        maxlength: 50
+
+    // ID bo'yicha topish
+    async findById(id) {
+        const result = await pool.query(
+            'SELECT id, phone, name, telegram_chat_id, is_verified, created_at FROM users WHERE id = $1',
+            [id]
+        );
+        return result.rows[0] || null;
     },
-    password: {
-        type: String,
-        select: false
+
+    // ID bo'yicha topish (parol bilan)
+    async findByIdWithPassword(id) {
+        const result = await pool.query(
+            'SELECT * FROM users WHERE id = $1',
+            [id]
+        );
+        return result.rows[0] || null;
     },
-    telegramChatId: {
-        type: String,
-        default: null
+
+    // Yangi foydalanuvchi yaratish
+    async create({ phone, name, otp_code, otp_expires_at }) {
+        const result = await pool.query(
+            `INSERT INTO users (phone, name, otp_code, otp_expires_at)
+             VALUES ($1, $2, $3, $4)
+             RETURNING id, phone, name, is_verified, created_at`,
+            [phone, name, otp_code, otp_expires_at]
+        );
+        return result.rows[0];
     },
-    isVerified: {
-        type: Boolean,
-        default: false
+
+    // Foydalanuvchini yangilash
+    async update(id, fields) {
+        const keys = Object.keys(fields);
+        const values = Object.values(fields);
+        const setClause = keys.map((key, i) => `${key} = $${i + 2}`).join(', ');
+
+        const result = await pool.query(
+            `UPDATE users SET ${setClause} WHERE id = $1 RETURNING id, phone, name, is_verified, created_at`,
+            [id, ...values]
+        );
+        return result.rows[0];
     },
-    otp: {
-        code: { type: String, select: false },
-        expiresAt: { type: Date, select: false }
+
+    // Parolni hash qilish
+    async hashPassword(password) {
+        const salt = await bcrypt.genSalt(10);
+        return await bcrypt.hash(password, salt);
     },
-    createdAt: {
-        type: Date,
-        default: Date.now
+
+    // Parolni tekshirish
+    async matchPassword(enteredPassword, hashedPassword) {
+        return await bcrypt.compare(enteredPassword, hashedPassword);
     }
-});
-
-// Parolni hash qilish
-userSchema.pre('save', async function (next) {
-    if (!this.isModified('password') || !this.password) return next();
-    const salt = await bcrypt.genSalt(10);
-    this.password = await bcrypt.hash(this.password, salt);
-    next();
-});
-
-// Parolni tekshirish
-userSchema.methods.matchPassword = async function (enteredPassword) {
-    return await bcrypt.compare(enteredPassword, this.password);
 };
 
-module.exports = mongoose.model('User', userSchema);
+module.exports = User;
