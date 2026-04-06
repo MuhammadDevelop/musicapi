@@ -29,10 +29,10 @@ const createMusic = async (req, res) => {
             artist,
             genre: genre || 'Boshqa',
             duration: duration || 0,
-            filePath: req.file.path,
-            fileName: req.file.originalname,
-            fileSize: req.file.size,
-            user: req.user._id
+            file_path: req.file.path,
+            file_name: req.file.originalname,
+            file_size: req.file.size,
+            user_id: req.user.id
         });
 
         res.status(201).json({
@@ -57,31 +57,16 @@ const createMusic = async (req, res) => {
 // @route   GET /api/music
 const getAllMusic = async (req, res) => {
     try {
-        const { search, genre, page = 1, limit = 20, sort = '-createdAt' } = req.query;
+        const { search, genre, page = 1, limit = 20, sort = 'created_at' } = req.query;
 
-        const query = {};
-
-        // Qidiruv
-        if (search) {
-            query.$or = [
-                { title: { $regex: search, $options: 'i' } },
-                { artist: { $regex: search, $options: 'i' } }
-            ];
-        }
-
-        // Janr bo'yicha filtr
-        if (genre) {
-            query.genre = genre;
-        }
-
-        const skip = (parseInt(page) - 1) * parseInt(limit);
-        const total = await Music.countDocuments(query);
-
-        const musics = await Music.find(query)
-            .populate('user', 'name phone')
-            .sort(sort)
-            .skip(skip)
-            .limit(parseInt(limit));
+        const { rows: musics, total } = await Music.findAll({
+            search,
+            genre,
+            page: parseInt(page),
+            limit: parseInt(limit),
+            sort,
+            order: 'DESC'
+        });
 
         res.status(200).json({
             success: true,
@@ -104,8 +89,7 @@ const getAllMusic = async (req, res) => {
 // @route   GET /api/music/my
 const getMyMusic = async (req, res) => {
     try {
-        const musics = await Music.find({ user: req.user._id })
-            .sort('-createdAt');
+        const musics = await Music.findByUserId(req.user.id);
 
         res.status(200).json({
             success: true,
@@ -124,8 +108,7 @@ const getMyMusic = async (req, res) => {
 // @route   GET /api/music/:id
 const getMusic = async (req, res) => {
     try {
-        const music = await Music.findById(req.params.id)
-            .populate('user', 'name phone');
+        const music = await Music.findById(req.params.id);
 
         if (!music) {
             return res.status(404).json({
@@ -150,7 +133,7 @@ const getMusic = async (req, res) => {
 // @route   PUT /api/music/:id
 const updateMusic = async (req, res) => {
     try {
-        let music = await Music.findById(req.params.id);
+        let music = await Music.findByIdSimple(req.params.id);
 
         if (!music) {
             return res.status(404).json({
@@ -160,7 +143,7 @@ const updateMusic = async (req, res) => {
         }
 
         // Faqat egasi o'zgartira oladi
-        if (music.user.toString() !== req.user._id.toString()) {
+        if (music.user_id !== req.user.id) {
             return res.status(403).json({
                 success: false,
                 message: 'Siz faqat o\'z musiqangizni o\'zgartira olasiz'
@@ -174,10 +157,7 @@ const updateMusic = async (req, res) => {
         if (genre) updateData.genre = genre;
         if (duration) updateData.duration = duration;
 
-        music = await Music.findByIdAndUpdate(req.params.id, updateData, {
-            new: true,
-            runValidators: true
-        });
+        music = await Music.update(req.params.id, updateData);
 
         res.status(200).json({
             success: true,
@@ -196,7 +176,7 @@ const updateMusic = async (req, res) => {
 // @route   DELETE /api/music/:id
 const deleteMusic = async (req, res) => {
     try {
-        const music = await Music.findById(req.params.id);
+        const music = await Music.findByIdSimple(req.params.id);
 
         if (!music) {
             return res.status(404).json({
@@ -206,7 +186,7 @@ const deleteMusic = async (req, res) => {
         }
 
         // Faqat egasi o'chira oladi
-        if (music.user.toString() !== req.user._id.toString()) {
+        if (music.user_id !== req.user.id) {
             return res.status(403).json({
                 success: false,
                 message: 'Siz faqat o\'z musiqangizni o\'chira olasiz'
@@ -214,15 +194,15 @@ const deleteMusic = async (req, res) => {
         }
 
         // Faylni diskdan o'chirish
-        if (music.filePath) {
+        if (music.file_path) {
             try {
-                fs.unlinkSync(music.filePath);
+                fs.unlinkSync(music.file_path);
             } catch (e) {
                 console.log('Fayl o\'chirishda xato (fayl mavjud emas bo\'lishi mumkin):', e.message);
             }
         }
 
-        await Music.findByIdAndDelete(req.params.id);
+        await Music.delete(req.params.id);
 
         res.status(200).json({
             success: true,
@@ -240,7 +220,7 @@ const deleteMusic = async (req, res) => {
 // @route   GET /api/music/:id/stream
 const streamMusic = async (req, res) => {
     try {
-        const music = await Music.findById(req.params.id);
+        const music = await Music.findByIdSimple(req.params.id);
 
         if (!music) {
             return res.status(404).json({
@@ -249,7 +229,7 @@ const streamMusic = async (req, res) => {
             });
         }
 
-        const filePath = path.resolve(music.filePath);
+        const filePath = path.resolve(music.file_path);
 
         // Fayl mavjudligini tekshirish
         if (!fs.existsSync(filePath)) {
@@ -263,7 +243,7 @@ const streamMusic = async (req, res) => {
         const fileSize = stat.size;
 
         // Tinglash sonini oshirish
-        await Music.findByIdAndUpdate(req.params.id, { $inc: { plays: 1 } });
+        await Music.incrementPlays(req.params.id);
 
         // Range header bilan streaming (audio seeking uchun)
         const range = req.headers.range;

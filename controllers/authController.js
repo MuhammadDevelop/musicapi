@@ -27,8 +27,8 @@ const register = async (req, res) => {
         }
 
         // Foydalanuvchi mavjudligini tekshirish
-        let user = await User.findOne({ phone });
-        if (user && user.isVerified) {
+        let user = await User.findByPhone(phone);
+        if (user && user.is_verified) {
             return res.status(400).json({
                 success: false,
                 message: 'Bu telefon raqam allaqachon ro\'yxatdan o\'tgan'
@@ -42,15 +42,18 @@ const register = async (req, res) => {
 
         if (user) {
             // Tasdiqlanmagan foydalanuvchini yangilash
-            user.name = name;
-            user.otp = { code: otpHash, expiresAt };
-            await user.save();
+            await User.update(user.id, {
+                name: name,
+                otp_code: otpHash,
+                otp_expires_at: expiresAt
+            });
         } else {
             // Yangi foydalanuvchi yaratish
             user = await User.create({
                 phone,
                 name,
-                otp: { code: otpHash, expiresAt }
+                otp_code: otpHash,
+                otp_expires_at: expiresAt
             });
         }
 
@@ -87,7 +90,7 @@ const verify = async (req, res) => {
             });
         }
 
-        const user = await User.findOne({ phone }).select('+otp.code +otp.expiresAt');
+        const user = await User.findByPhone(phone, true); // true = OTP fieldlarni ham olish
 
         if (!user) {
             return res.status(404).json({
@@ -97,7 +100,7 @@ const verify = async (req, res) => {
         }
 
         // OTP muddatini tekshirish
-        if (!user.otp || !user.otp.expiresAt || user.otp.expiresAt < new Date()) {
+        if (!user.otp_code || !user.otp_expires_at || new Date(user.otp_expires_at) < new Date()) {
             return res.status(400).json({
                 success: false,
                 message: 'Tasdiqlash kodi muddati o\'tgan. Qaytadan so\'rang.'
@@ -105,7 +108,7 @@ const verify = async (req, res) => {
         }
 
         // OTP kodni tekshirish
-        const isMatch = await bcrypt.compare(code, user.otp.code);
+        const isMatch = await bcrypt.compare(code, user.otp_code);
         if (!isMatch) {
             return res.status(400).json({
                 success: false,
@@ -114,19 +117,21 @@ const verify = async (req, res) => {
         }
 
         // Foydalanuvchini tasdiqlash
-        user.isVerified = true;
-        user.otp = undefined;
-        await user.save();
+        await User.update(user.id, {
+            is_verified: true,
+            otp_code: null,
+            otp_expires_at: null
+        });
 
         // Token qaytarish
-        const token = generateToken(user._id);
+        const token = generateToken(user.id);
 
         res.status(200).json({
             success: true,
             message: 'Ro\'yxatdan muvaffaqiyatli o\'tdingiz!',
             token,
             user: {
-                id: user._id,
+                id: user.id,
                 phone: user.phone,
                 name: user.name
             }
@@ -154,9 +159,9 @@ const login = async (req, res) => {
             });
         }
 
-        const user = await User.findOne({ phone, isVerified: true });
+        const user = await User.findByPhone(phone);
 
-        if (!user) {
+        if (!user || !user.is_verified) {
             return res.status(404).json({
                 success: false,
                 message: 'Foydalanuvchi topilmadi. Avval ro\'yxatdan o\'ting.'
@@ -168,8 +173,10 @@ const login = async (req, res) => {
         const otpHash = await bcrypt.hash(otp, 10);
         const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
 
-        user.otp = { code: otpHash, expiresAt };
-        await user.save();
+        await User.update(user.id, {
+            otp_code: otpHash,
+            otp_expires_at: expiresAt
+        });
 
         const sent = await sendOTP(phone, otp);
 
@@ -203,7 +210,7 @@ const loginVerify = async (req, res) => {
             });
         }
 
-        const user = await User.findOne({ phone }).select('+otp.code +otp.expiresAt');
+        const user = await User.findByPhone(phone, true); // true = OTP fieldlarni ham olish
 
         if (!user) {
             return res.status(404).json({
@@ -212,14 +219,14 @@ const loginVerify = async (req, res) => {
             });
         }
 
-        if (!user.otp || !user.otp.expiresAt || user.otp.expiresAt < new Date()) {
+        if (!user.otp_code || !user.otp_expires_at || new Date(user.otp_expires_at) < new Date()) {
             return res.status(400).json({
                 success: false,
                 message: 'Kirish kodi muddati o\'tgan. Qaytadan so\'rang.'
             });
         }
 
-        const isMatch = await bcrypt.compare(code, user.otp.code);
+        const isMatch = await bcrypt.compare(code, user.otp_code);
         if (!isMatch) {
             return res.status(400).json({
                 success: false,
@@ -227,17 +234,20 @@ const loginVerify = async (req, res) => {
             });
         }
 
-        user.otp = undefined;
-        await user.save();
+        // OTP ni tozalash
+        await User.update(user.id, {
+            otp_code: null,
+            otp_expires_at: null
+        });
 
-        const token = generateToken(user._id);
+        const token = generateToken(user.id);
 
         res.status(200).json({
             success: true,
             message: 'Muvaffaqiyatli kirdingiz!',
             token,
             user: {
-                id: user._id,
+                id: user.id,
                 phone: user.phone,
                 name: user.name
             }
@@ -256,14 +266,14 @@ const loginVerify = async (req, res) => {
 // @route   GET /api/auth/me
 const getMe = async (req, res) => {
     try {
-        const user = await User.findById(req.user._id);
+        const user = await User.findById(req.user.id);
         res.status(200).json({
             success: true,
             user: {
-                id: user._id,
+                id: user.id,
                 phone: user.phone,
                 name: user.name,
-                createdAt: user.createdAt
+                createdAt: user.created_at
             }
         });
     } catch (error) {

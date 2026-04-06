@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎵 Music API — Dokumentatsiya</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        :root {
+            --bg: #0a0a0f;
+            --card: #12121a;
+            --border: #1e1e2e;
+            --text: #e4e4e7;
+            --text-dim: #71717a;
+            --accent: #8b5cf6;
+            --accent-glow: rgba(139, 92, 246, 0.15);
+            --green: #22c55e;
+            --blue: #3b82f6;
+            --orange: #f59e0b;
+            --red: #ef4444;
+            --pink: #ec4899;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, rgba(139,92,246,0.1), rgba(59,130,246,0.05));
+            border-bottom: 1px solid var(--border);
+            padding: 2rem 0;
+            text-align: center;
+        }
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #8b5cf6, #3b82f6, #ec4899);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+        }
+        .header p { color: var(--text-dim); font-size: 1.05rem; }
+        .base-url {
+            display: inline-block;
+            margin-top: 1rem;
+            padding: 0.5rem 1.2rem;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            color: var(--accent);
+        }
+
+        /* Container */
+        .container { max-width: 900px; margin: 0 auto; padding: 2rem 1.5rem; }
+
+        /* Section */
+        .section {
+            margin-bottom: 2.5rem;
+        }
+        .section-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        /* Flow Steps */
+        .flow {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        .flow h3 { color: var(--accent); margin-bottom: 1rem; font-size: 1.1rem; }
+        .step {
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+            padding: 0.8rem 0;
+            border-bottom: 1px solid var(--border);
+        }
+        .step:last-child { border-bottom: none; }
+        .step-num {
+            width: 28px; height: 28px;
+            background: var(--accent);
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 700; font-size: 0.8rem;
+            flex-shrink: 0;
+            color: #fff;
+        }
+        .step-text { font-size: 0.95rem; }
+        .step-text strong { color: var(--accent); }
+
+        /* Endpoint Card */
+        .endpoint {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            margin-bottom: 1rem;
+            overflow: hidden;
+            transition: border-color 0.2s;
+        }
+        .endpoint:hover { border-color: var(--accent); }
+        
+        .endpoint-header {
+            padding: 1rem 1.2rem;
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            cursor: pointer;
+            user-select: none;
+        }
+        .endpoint-header:hover { background: rgba(255,255,255,0.02); }
+
+        .method {
+            padding: 0.25rem 0.6rem;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            min-width: 55px;
+            text-align: center;
+        }
+        .method.get { background: rgba(34,197,94,0.15); color: var(--green); }
+        .method.post { background: rgba(59,130,246,0.15); color: var(--blue); }
+        .method.put { background: rgba(245,158,11,0.15); color: var(--orange); }
+        .method.delete { background: rgba(239,68,68,0.15); color: var(--red); }
+
+        .endpoint-path {
+            font-family: 'Courier New', monospace;
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+        .endpoint-desc {
+            color: var(--text-dim);
+            font-size: 0.85rem;
+            margin-left: auto;
+        }
+        .lock { color: var(--orange); font-size: 0.9rem; }
+        .chevron {
+            color: var(--text-dim);
+            transition: transform 0.3s;
+            font-size: 0.8rem;
+        }
+        .endpoint.open .chevron { transform: rotate(180deg); }
+
+        .endpoint-body {
+            display: none;
+            padding: 0 1.2rem 1.2rem;
+            border-top: 1px solid var(--border);
+        }
+        .endpoint.open .endpoint-body { display: block; }
+
+        .sub-title {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin: 1rem 0 0.5rem;
+        }
+
+        pre {
+            background: #0d0d14;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1rem;
+            overflow-x: auto;
+            font-size: 0.85rem;
+            line-height: 1.5;
+            font-family: 'Courier New', monospace;
+        }
+        .json-key { color: #7dd3fc; }
+        .json-string { color: #86efac; }
+        .json-bool { color: #fbbf24; }
+        .json-num { color: #c084fc; }
+
+        /* Badge */
+        .badge {
+            display: inline-block;
+            padding: 0.15rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+        .badge.required { background: rgba(239,68,68,0.15); color: var(--red); }
+        .badge.optional { background: rgba(113,113,122,0.15); color: var(--text-dim); }
+
+        /* Parameter Table */
+        .param-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+        }
+        .param-table th {
+            text-align: left;
+            padding: 0.5rem;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-dim);
+            font-weight: 600;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+        }
+        .param-table td {
+            padding: 0.5rem;
+            border-bottom: 1px solid rgba(255,255,255,0.03);
+        }
+        .param-name {
+            font-family: 'Courier New', monospace;
+            color: var(--accent);
+            font-weight: 600;
+        }
+
+        .note {
+            background: rgba(139,92,246,0.08);
+            border-left: 3px solid var(--accent);
+            padding: 0.8rem 1rem;
+            border-radius: 0 8px 8px 0;
+            font-size: 0.85rem;
+            margin-top: 1rem;
+            color: var(--text-dim);
+        }
+        .note strong { color: var(--accent); }
+
+        .footer {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-dim);
+            font-size: 0.85rem;
+            border-top: 1px solid var(--border);
+        }
+
+        @media (max-width: 640px) {
+            .header h1 { font-size: 1.8rem; }
+            .endpoint-desc { display: none; }
+            .container { padding: 1rem; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>🎵 Music API</h1>
+    <p>Musiqa yuklash, tinglash va boshqarish uchun RESTful API</p>
+    <div class="base-url" id="baseUrl">Loading...</div>
+</div>
+
+<div class="container">
+
+    <!-- Qanday ishlaydi -->
+    <div class="section">
+        <div class="section-title">📋 Qanday ishlaydi?</div>
+        <div class="flow">
+            <h3>🔐 Ro'yxatdan o'tish jarayoni</h3>
+            <div class="step">
+                <div class="step-num">1</div>
+                <div class="step-text">Telegram botga o'ting: telefon raqamingizni yuboring</div>
+            </div>
+            <div class="step">
+                <div class="step-num">2</div>
+                <div class="step-text"><strong>POST /api/auth/register</strong> ga telefon raqam va ism yuboring</div>
+            </div>
+            <div class="step">
+                <div class="step-num">3</div>
+                <div class="step-text">Telegram dan 6 xonali OTP kod olasiz</div>
+            </div>
+            <div class="step">
+                <div class="step-num">4</div>
+                <div class="step-text"><strong>POST /api/auth/verify</strong> ga telefon va OTP kodni yuboring → <strong>Token</strong> olasiz</div>
+            </div>
+        </div>
+
+        <div class="flow">
+            <h3>🎵 Musiqa bilan ishlash</h3>
+            <div class="step">
+                <div class="step-num">1</div>
+                <div class="step-text">Har bir so'rovda <strong>Authorization: Bearer TOKEN</strong> header qo'shing</div>
+            </div>
+            <div class="step">
+                <div class="step-num">2</div>
+                <div class="step-text"><strong>POST /api/music</strong> bilan audio fayl yuklang (multipart/form-data)</div>
+            </div>
+            <div class="step">
+                <div class="step-num">3</div>
+                <div class="step-text"><strong>GET /api/music</strong> bilan musiqalarni ko'ring, qidiring</div>
+            </div>
+            <div class="step">
+                <div class="step-num">4</div>
+                <div class="step-text"><strong>GET /api/music/:id/stream</strong> bilan tinglang</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- AUTH -->
+    <div class="section">
+        <div class="section-title">🔐 Autentifikatsiya</div>
+
+        <!-- Register -->
+        <div class="endpoint" onclick="toggleEndpoint(this)">
+            <div class="endpoint-header">
+                <span class="method post">POST</span>
+                <span class="endpoint-path">/api/auth/register</span>
+                <span class="endpoint-desc">Ro'yxatdan o'tish</span>
+                <span class="chevron">▼</span>
+            </div>
+            <div class="endpoint-body">
+                <div class="sub-title">Body (JSON)</div>
+                <table class="param-table">
+                    <tr><th>Parametr</th><th>Turi</th><th>Tavsif</th></tr>
+                    <tr>
+                        <td><span class="param-name">phone</span> <span class="badge required">shart</span></td>
+                        <td>string</td>
+                        <td>Telefon raqam, masalan: +998901234567</td>
+                    </tr>
+                    <tr>
+                        <td><span class="param-name">name</span> <span class="badge required">shart</span></td>
+                        <td>string</td>
+                        <td>Foydalanuvchi ismi</td>
+                    </tr>
+                </table>
+                <div class="sub-title">Misol so'rov</div>
+<pre>{
+  <span class="json-key">"phone"</span>: <span class="json-string">"+998901234567"</span>,
+  <span class="json-key">"name"</span>: <span class="json-string">"Muhammad"</span>
+}</pre>
+                <div class="sub-title">Javob</div>
+<pre>{
+  <span class="json-key">"success"</span>: <span class="json-bool">true</span>,
+  <span class="json-key">"message"</span>: <span class="json-string">"Tasdiqlash kodi Telegram orqali yuborildi"</span>,
+  <span class="json-key">"phone"</span>: <span class="json-string">"+998901234567"</span>
+}</pre>
+            </div>
+        </div>
+
+        <!-- Verify -->
+        <div class="endpoint" onclick="toggleEndpoint(this)">
+            <div class="endpoint-header">
+                <span class="method post">POST</span>
+                <span class="endpoint-path">/api/auth/verify</span>
+                <span class="endpoint-desc">OTP tasdiqlash (register)</span>
+                <span class="chevron">▼</span>
+            </div>
+            <div class="endpoint-body">
+                <div class="sub-title">Body (JSON)</div>
+                <table class="param-table">
+                    <tr><th>Parametr</th><th>Turi</th><th>Tavsif</th></tr>
+                    <tr>
+                        <td><span class="param-name">phone</span> <span class="badge required">shart</span></td>
+                        <td>string</td>
+                        <td>Ro'yxatdan o'tgan telefon raqam</td>
+                    </tr>
+                    <tr>
+                        <td><span class="param-name">code</span> <span class="badge required">shart</span></td>
+                        <td>string</td>
+                        <td>Telegram dan kelgan 6 xonali kod</td>
+                    </tr>
+                </table>
+                <div class="sub-title">Misol so'rov</div>
+<pre>{
+  <span class="json-key">"phone"</span>: <span class="json-string">"+998901234567"</span>,
+  <span class="json-key">"code"</span>: <span class="json-string">"123456"</span>
+}</pre>
+                <div class="sub-title">Javob</div>
+<pre>{
+  <span class="json-key">"success"</span>: <span class="json-bool">true</span>,
+  <span class="json-key">"message"</span>: <span class="json-string">"Ro'yxatdan muvaffaqiyatli o'tdingiz!"</span>,
+  <span class="json-key">"token"</span>: <span class="json-string">"eyJhbGci..."</span>,
+  <span class="json-key">"user"</span>: {
+    <span class="json-key">"id"</span>: <span class="json-string">"..."</span>,
+    <span class="json-key">"phone"</span>: <span class="json-string">"+998901234567"</span>,
+    <span class="json-key">"name"</span>: <span class="json-string">"Muhammad"</span>
+  }
+}</pre>
+                <div class="note"><strong>💡 Muhim:</strong> Bu javobdagi <code>token</code> ni saqlang — keyingi barcha so'rovlarda kerak bo'ladi!</div>
+            </div>
+        </div>
+
+        <!-- Login -->
+        <div class="endpoint" onclick="toggleEndpoint(this)">
+            <div class="endpoint-header">
+                <span class="method post">POST</span>
+                <span class="endpoint-path">/api/auth/login</span>
+                <span class="endpoint-desc">Kirish (OTP yuborish)</span>
+                <span class="chevron">▼</span>
+            </div>
+            <div class="endpoint-body">
+                <div class="sub-title">Body (JSON)</div>
+                <table class="param-table">
+                    <tr><th>Parametr</th><th>Turi</th><th>Tavsif</th></tr>
+                    <tr>
+                        <td><span class="param-name">phone</span> <span class="badge required">shart</span></td>
+                        <td>string</td>
+                        <td>Ro'yxatdan o'tgan telefon raqam</td>
+                    </tr>
+                </table>
+                <div class="sub-title">Misol so'rov</div>
+<pre>{
+  <span class="json-key">"phone"</span>: <span class="json-string">"+998901234567"</span>
+}</pre>
+                <div class="sub-title">Javob</div>
+<pre>{
+  <span class="json-key">"success"</span>: <span class="json-bool">true</span>,
+  <span class="json-key">"message"</span>: <span class="json-string">"Kirish kodi Telegram orqali yuborildi"</span>,
+  <span class="json-key">"phone"</span>: <span class="json-string">"+998901234567"</span>
+}</pre>
+            </div>
+        </div>
+
+        <!-- Login Verify -->
+        <div class="endpoint" onclick="toggleEndpoint(this)">
+            <div class="endpoint-header">
+                <span class="method post">POST</span>
+                <span class="endpoint-path">/api/auth/login/verify</span>
+                <span class="endpoint-desc">Login OTP tasdiqlash</span>
+                <span class="chevron">▼</span>
+            </div>
+            <div class="endpoint-body">
+                <div class="sub-title">Body (JSON)</div>
+                <table class="param-table">
+                    <tr><th>Parametr</th><th>Turi</th><th>Tavsif</th></tr>
+                    <tr>
+                        <td><span class="param-name">phone</span> <span class="badge required">shart</span></td>
+                        <td>string</td>
+                        <td>Telefon raqam</td>
+                    </tr>
+                    <tr>
+                        <td><span class="param-name">code</span> <span class="badge required">shart</span></td>
+                        <td>string</td>
+                        <td>Telegram dan kelgan 6 xonali kod</td>
+                    </tr>
+                </table>
+                <div class="sub-title">Javob</div>
+<pre>{
+  <span class="json-key">"success"</span>: <span class="json-bool">true</span>,
+  <span class="json-key">"message"</span>: <span class="json-string">"Muvaffaqiyatli kirdingiz!"</span>,
+  <span class="json-key">"token"</span>: <span class="json-string">"eyJhbGci..."</span>,
+  <span class="json-key">"user"</span>: { <span class="json-key">"id"</span>: <span class="json-string">"..."</span>, <span class="json-key">"phone"</span>: <span class="json-string">"..."</span>, <span class="json-key">"name"</span>: <span class="json-string">"..."</span> }
+}</pre>
+            </div>
+        </div>
+
+        <!-- Get Me -->
+        <div class="endpoint" onclick="toggleEndpoint(this)">
+            <div class="endpoint-header">
+                <span class="method get">GET</span>
+                <span class="endpoint-path">/api/auth/me</span>
+                <span class="endpoint-desc">Profil ma'lumotlari</span>
+                <span class="lock">🔒</span>
+                <span class="chevron">▼</span>
+            </div>
+            <div class="endpoint-body">
+                <div class="sub-title">Headers</div>
+<pre><span class="json-key">Authorization</span>: Bearer <span class="json-string">YOUR_TOKEN_HERE</span></pre>
+                <div class="sub-title">Javob</div>
+<pre>{
+  <span class="json-key">"success"</span>: <span class="json-bool">true</span>,
+  <span class="json-key">"user"</span>: {
+    <span class="json-key">"id"</span>: <span class="json-string">"..."</span>,
+    <span class="json-key">"phone"</span>: <span class="json-string">"+998901234567"</span>,
+    <span class="json-key">"name"</span>: <span class="json-string">"Muhammad"</span>,
+    <span class="json-key">"createdAt"</span>: <span class="json-string">"2026-04-05T..."</span>
+  }
+}</pre>
+            </div>
+        </div>
+    </div>
+
+    <!-- MUSIC -->
+    <div class="section">
+        <div class="section-title">🎵 Musiqalar</div>
+        <div class="note" style="margin-bottom: 1rem;"><strong>🔒 Barcha musiqa endpointlari</strong> uchun <code>Authorization: Bearer TOKEN</code> header kerak!</div>
+
+        <!-- Create Music -->
+        <div class="endpoint" onclick="toggleEndpoint(this)">
+            <div class="endpoint-header">
+                <span class="method post">POST</span>
+                <span class="endpoint-path">/api/music</span>
+                <span class="endpoint-desc">Musiqa yuklash</span>
+                <span class="lock">🔒</span>
+                <span class="chevron">▼</span>
+            </div>
+            <div class="endpoint-body">
+                <div class="note"><strong>⚠️ Content-Type:</strong> <code>multipart/form-data</code> (JSON emas!)</div>
+                <div class="sub-title">Form Data</div>
+                <table class="param-table">
+                    <tr><th>Parametr</th><th>Turi</th><th>Tavsif</th></tr>
+                    <tr>
+                        <td><span class="param-name">audio</span> <span class="badge required">shart</span></td>
+                        <td>file</td>
+                        <td>Audio fayl (mp3, wav, ogg, flac, aac, m4a) — max 50MB</td>
+                    </tr>
+                    <tr>
+                        <td><span class="param-name">title</span> <span class="badge required">shart</span></td>
+                        <td>string</td>
+                        <td>Musiqa nomi</td>
+                    </tr>
+                    <tr>
+                        <td><span class="param-name">artist</span> <span class="badge required">shart</span></td>
+                        <td>string</td>
+                        <td>Ijrochi nomi</td>
+                    </tr>
+                    <tr>
+                        <td><span class="param-name">genre</span> <span class="badge optional">ixtiyoriy</span></td>
+                        <td>string</td>
+                        <td>Janr (default: "Boshqa")</td>
+                    </tr>
+                    <tr>
+                        <td><span class="param-name">duration</span> <span class="badge optional">ixtiyoriy</span></td>
+                        <td>number</td>
+                        <td>Davomiyligi (soniyalarda)</td>
+                    </tr>
+                </table>
+                <div class="sub-title">cURL misol</div>
+<pre>curl -X POST <span class="json-string">BASE_URL/api/music</span> \
+  -H <span class="json-string">"Authorization: Bearer TOKEN"</span> \
+  -F <span class="json-string">"audio=@song.mp3"</span> \
+  -F <span class="json-string">"title=Mening qo'shig'im"</span> \
+  -F <span class="json-string">"artist=Muhammad"</span> \
+  -F <span class="json-string">"genre=Pop"</span></pre>
+                <div class="sub-title">Javob</div>
+<pre>{
+  <span class="json-key">"success"</span>: <span class="json-bool">true</span>,
+  <span class="json-key">"message"</span>: <span class="json-string">"Musiqa muvaffaqiyatli yuklandi"</span>,
+  <span class="json-key">"data"</span>: {
+    <span class="json-key">"_id"</span>: <span class="json-string">"..."</span>,
+    <span class="json-key">"title"</span>: <span class="json-string">"Mening qo'shig'im"</span>,
+    <span class="json-key">"artist"</span>: <span class="json-string">"Muhammad"</span>,
+    <span class="json-key">"genre"</span>: <span class="json-string">"Pop"</span>,
+    <span class="json-key">"plays"</span>: <span class="json-num">0</span>
+  }
+}</pre>
+            </div>
+        </div>
+
+        <!-- Get All Music -->
+        <div class="endpoint" onclick="toggleEndpoint(this)">
+            <div class="endpoint-header">
+                <span class="method get">GET</span>
+                <span class="endpoint-path">/api/music</span>
+                <span class="endpoint-desc">Barcha musiqalar</span>
+                <span class="lock">🔒</span>
+                <span class="chevron">▼</span>
+            </div>
+            <div class="endpoint-body">
+                <div class="sub-title">Query Parametrlar</div>
+                <table class="param-table">
+                    <tr><th>Parametr</th><th>Turi</th><th>Tavsif</th></tr>
+                    <tr>
+                        <td><span class="param-name">search</span> <span class="badge optional">ixtiyoriy</span></td>
+                        <td>string</td>
+                        <td>Nomi yoki ijrochisi bo'yicha qidirish</td>
+                    </tr>
+                    <tr>
+                        <td><span class="param-name">genre</span> <span class="badge optional">ixtiyoriy</span></td>
+                        <td>string</td>
+                        <td>Janr bo'yicha filtr</td>
+                    </tr>
+                    <tr>
+                        <td><span class="param-name">page</span> <span class="badge optional">ixtiyoriy</span></td>
+                        <td>number</td>
+                        <td>Sahifa raqami (default: 1)</td>
+                    </tr>
+                    <tr>
+                        <td><span class="param-name">limit</span> <span class="badge optional">ixtiyoriy</span></td>
+                        <td>number</td>
+                        <td>Har sahifada nechtasi (default: 20)</td>
+                    </tr>
+                </table>
+                <div class="sub-title">Misol</div>
+<pre>GET /api/music?search=love&genre=Pop&page=1&limit=10</pre>
+                <div class="sub-title">Javob</div>
+<pre>{
+  <span class="json-key">"success"</span>: <span class="json-bool">true</span>,
+  <span class="json-key">"count"</span>: <span class="json-num">5</span>,
+  <span class="json-key">"total"</span>: <span class="json-num">25</span>,
+  <span class="json-key">"totalPages"</span>: <span class="json-num">3</span>,
+  <span class="json-key">"currentPage"</span>: <span class="json-num">1</span>,
+  <span class="json-key">"data"</span>: [...]
+}</pre>
+            </div>
+        </div>
+
+        <!-- My Music -->
+        <div class="endpoint" onclick="toggleEndpoint(this)">
+            <div class="endpoint-header">
+                <span class="method get">GET</span>
+                <span class="endpoint-path">/api/music/my</span>
+                <span class="endpoint-desc">Mening musiqalarim</span>
+                <span class="lock">🔒</span>
+                <span class="chevron">▼</span>
+            </div>
+            <div class="endpoint-body">
+                <div class="sub-title">Javob</div>
+<pre>{
+  <span class="json-key">"success"</span>: <span class="json-bool">true</span>,
+  <span class="json-key">"count"</span>: <span class="json-num">3</span>,
+  <span class="json-key">"data"</span>: [...]
+}</pre>
+            </div>
+        </div>
+
+        <!-- Get One -->
+        <div class="endpoint" onclick="toggleEndpoint(this)">
+            <div class="endpoint-header">
+                <span class="method get">GET</span>
+                <span class="endpoint-path">/api/music/:id</span>
+                <span class="endpoint-desc">Bitta musiqa</span>
+                <span class="lock">🔒</span>
+                <span class="chevron">▼</span>
+            </div>
+            <div class="endpoint-body">
+                <div class="sub-title">URL Parametr</div>
+                <table class="param-table">
+                    <tr><th>Parametr</th><th>Tavsif</th></tr>
+                    <tr>
+                        <td><span class="param-name">id</span></td>
+                        <td>Musiqa ID si</td>
+                    </tr>
+                </table>
+                <div class="sub-title">Javob</div>
+<pre>{
+  <span class="json-key">"success"</span>: <span class="json-bool">true</span>,
+  <span class="json-key">"data"</span>: {
+    <span class="json-key">"_id"</span>: <span class="json-string">"..."</span>,
+    <span class="json-key">"title"</span>: <span class="json-string">"Mening qo'shig'im"</span>,
+    <span class="json-key">"artist"</span>: <span class="json-string">"Muhammad"</span>,
+    <span class="json-key">"genre"</span>: <span class="json-string">"Pop"</span>,
+    <span class="json-key">"plays"</span>: <span class="json-num">42</span>,
+    <span class="json-key">"user"</span>: { <span class="json-key">"name"</span>: <span class="json-string">"..."</span>, <span class="json-key">"phone"</span>: <span class="json-string">"..."</span> }
+  }
+}</pre>
+            </div>
+        </div>
+
+        <!-- Update -->
+        <div class="endpoint" onclick="toggleEndpoint(this)">
+            <div class="endpoint-header">
+                <span class="method put">PUT</span>
+                <span class="endpoint-path">/api/music/:id</span>
+                <span class="endpoint-desc">Musiqa yangilash</span>
+                <span class="lock">🔒</span>
+                <span class="chevron">▼</span>
+            </div>
+            <div class="endpoint-body">
+                <div class="note"><strong>⚠️ Faqat o'z musiqangizni</strong> o'zgartirishingiz mumkin!</div>
+                <div class="sub-title">Body (JSON)</div>
+                <table class="param-table">
+                    <tr><th>Parametr</th><th>Turi</th><th>Tavsif</th></tr>
+                    <tr>
+                        <td><span class="param-name">title</span> <span class="badge optional">ixtiyoriy</span></td>
+                        <td>string</td>
+                        <td>Yangi nom</td>
+                    </tr>
+                    <tr>
+                        <td><span class="param-name">artist</span> <span class="badge optional">ixtiyoriy</span></td>
+                        <td>string</td>
+                        <td>Yangi ijrochi</td>
+                    </tr>
+                    <tr>
+                        <td><span class="param-name">genre</span> <span class="badge optional">ixtiyoriy</span></td>
+                        <td>string</td>
+                        <td>Yangi janr</td>
+                    </tr>
+                </table>
+                <div class="sub-title">Misol</div>
+<pre>{
+  <span class="json-key">"title"</span>: <span class="json-string">"Yangi nom"</span>,
+  <span class="json-key">"genre"</span>: <span class="json-string">"Rock"</span>
+}</pre>
+            </div>
+        </div>
+
+        <!-- Delete -->
+        <div class="endpoint" onclick="toggleEndpoint(this)">
+            <div class="endpoint-header">
+                <span class="method delete">DELETE</span>
+                <span class="endpoint-path">/api/music/:id</span>
+                <span class="endpoint-desc">Musiqa o'chirish</span>
+                <span class="lock">🔒</span>
+                <span class="chevron">▼</span>
+            </div>
+            <div class="endpoint-body">
+                <div class="note"><strong>⚠️ Faqat o'z musiqangizni</strong> o'chirishingiz mumkin! Audio fayl ham diskdan o'chiriladi.</div>
+                <div class="sub-title">Javob</div>
+<pre>{
+  <span class="json-key">"success"</span>: <span class="json-bool">true</span>,
+  <span class="json-key">"message"</span>: <span class="json-string">"Musiqa o'chirildi"</span>
+}</pre>
+            </div>
+        </div>
+
+        <!-- Stream -->
+        <div class="endpoint" onclick="toggleEndpoint(this)">
+            <div class="endpoint-header">
+                <span class="method get">GET</span>
+                <span class="endpoint-path">/api/music/:id/stream</span>
+                <span class="endpoint-desc">Musiqani tinglash (stream)</span>
+                <span class="lock">🔒</span>
+                <span class="chevron">▼</span>
+            </div>
+            <div class="endpoint-body">
+                <p style="font-size:0.9rem; color:var(--text-dim); margin-top:0.5rem;">Audio faylni stream qiladi. Brauzerda to'g'ridan-to'g'ri tinglash mumkin. Har safar tinglanganda <code>plays</code> soni 1 ga oshadi.</p>
+                <div class="sub-title">HTML misol</div>
+<pre>&lt;audio controls src=<span class="json-string">"BASE_URL/api/music/ID/stream"</span>&gt;&lt;/audio&gt;</pre>
+                <div class="note"><strong>💡 Qo'llab-quvvatlanadi:</strong> Range headers (seeking uchun), audio/mpeg content type</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Error format -->
+    <div class="section">
+        <div class="section-title">❌ Xatolik formati</div>
+        <div class="endpoint open">
+            <div class="endpoint-body" style="display:block; border-top:none;">
+<pre>{
+  <span class="json-key">"success"</span>: <span class="json-bool">false</span>,
+  <span class="json-key">"message"</span>: <span class="json-string">"Xatolik tavsifi"</span>
+}</pre>
+                <div class="sub-title" style="margin-top: 1.2rem;">HTTP status kodlari</div>
+                <table class="param-table">
+                    <tr><th>Kod</th><th>Ma'nosi</th></tr>
+                    <tr><td><span style="color:var(--green)">200</span></td><td>Muvaffaqiyatli</td></tr>
+                    <tr><td><span style="color:var(--green)">201</span></td><td>Yaratildi</td></tr>
+                    <tr><td><span style="color:var(--orange)">400</span></td><td>Noto'g'ri so'rov</td></tr>
+                    <tr><td><span style="color:var(--orange)">401</span></td><td>Autentifikatsiya kerak</td></tr>
+                    <tr><td><span style="color:var(--orange)">403</span></td><td>Ruxsat yo'q</td></tr>
+                    <tr><td><span style="color:var(--orange)">404</span></td><td>Topilmadi</td></tr>
+                    <tr><td><span style="color:var(--red)">500</span></td><td>Server xatosi</td></tr>
+                </table>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<div class="footer">
+    🎵 Music API — Barcha huquqlar himoyalangan © 2026
+</div>
+
+<script>
+    // Base URL ni aniqlash
+    document.getElementById('baseUrl').textContent = window.location.origin;
+
+    // Endpoint toggle
+    function toggleEndpoint(el) {
+        // Agar headerdan bosgan bo'lsa
+        if (el.classList.contains('endpoint')) {
+            el.classList.toggle('open');
+        }
+    }
+
+    // Click faqat headerda ishlashi uchun
+    document.querySelectorAll('.endpoint').forEach(ep => {
+        ep.onclick = null;
+        ep.querySelector('.endpoint-header').addEventListener('click', () => {
+            ep.classList.toggle('open');
+        });
+    });
+</script>
+
+</body>
+</html>
