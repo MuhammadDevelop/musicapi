@@ -1,15 +1,27 @@
 const { pool } = require('../config/db');
 const bcrypt = require('bcryptjs');
 
+// Telefon raqamni normalizatsiya qilish (+998... formatiga)
+const normalizePhone = (phone) => {
+    let cleaned = phone.replace(/[\s\-\(\)]/g, '');
+    if (!cleaned.startsWith('+')) {
+        cleaned = '+' + cleaned;
+    }
+    return cleaned;
+};
+
 const User = {
     // Telefon raqam bo'yicha topish
     async findByPhone(phone, includeOtp = false) {
+        const normalized = normalizePhone(phone);
+        const withoutPlus = normalized.substring(1);
+
         const fields = includeOtp
             ? '*'
             : 'id, phone, name, password, telegram_chat_id, is_verified, created_at';
         const result = await pool.query(
-            `SELECT ${fields} FROM users WHERE phone = $1`,
-            [phone]
+            `SELECT ${fields} FROM users WHERE phone = $1 OR phone = $2`,
+            [normalized, withoutPlus]
         );
         return result.rows[0] || null;
     },
@@ -34,11 +46,12 @@ const User = {
 
     // Yangi foydalanuvchi yaratish
     async create({ phone, name, otp_code, otp_expires_at }) {
+        const normalized = normalizePhone(phone);
         const result = await pool.query(
             `INSERT INTO users (phone, name, otp_code, otp_expires_at)
              VALUES ($1, $2, $3, $4)
              RETURNING id, phone, name, is_verified, created_at`,
-            [phone, name, otp_code, otp_expires_at]
+            [normalized, name, otp_code, otp_expires_at]
         );
         return result.rows[0];
     },

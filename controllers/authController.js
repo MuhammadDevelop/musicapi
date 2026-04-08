@@ -3,6 +3,15 @@ const bcrypt = require('bcryptjs');
 const User = require('../models/User');
 const { sendOTP } = require('../bot/telegramBot');
 
+// Telefon raqamni normalizatsiya qilish
+const normalizePhone = (phone) => {
+    let cleaned = phone.replace(/[\s\-\(\)]/g, '');
+    if (!cleaned.startsWith('+')) {
+        cleaned = '+' + cleaned;
+    }
+    return cleaned;
+};
+
 // Random 6 xonali OTP generatsiya qilish
 const generateOTP = () => {
     return Math.floor(100000 + Math.random() * 900000).toString();
@@ -17,14 +26,16 @@ const generateToken = (id) => {
 // @route   POST /api/auth/register
 const register = async (req, res) => {
     try {
-        const { phone, name } = req.body;
+        const { phone: rawPhone, name } = req.body;
 
-        if (!phone || !name) {
+        if (!rawPhone || !name) {
             return res.status(400).json({
                 success: false,
                 message: 'Telefon raqam va ism kiritilishi shart'
             });
         }
+
+        const phone = normalizePhone(rawPhone);
 
         // Foydalanuvchi mavjudligini tekshirish
         let user = await User.findByPhone(phone);
@@ -81,15 +92,16 @@ const register = async (req, res) => {
 // @route   POST /api/auth/verify
 const verify = async (req, res) => {
     try {
-        const { phone, code } = req.body;
+        const { phone: rawPhone, code } = req.body;
 
-        if (!phone || !code) {
+        if (!rawPhone || !code) {
             return res.status(400).json({
                 success: false,
                 message: 'Telefon raqam va kod kiritilishi shart'
             });
         }
 
+        const phone = normalizePhone(rawPhone);
         const user = await User.findByPhone(phone, true); // true = OTP fieldlarni ham olish
 
         if (!user) {
@@ -150,15 +162,16 @@ const verify = async (req, res) => {
 // @route   POST /api/auth/login
 const login = async (req, res) => {
     try {
-        const { phone } = req.body;
+        const { phone: rawPhone } = req.body;
 
-        if (!phone) {
+        if (!rawPhone) {
             return res.status(400).json({
                 success: false,
                 message: 'Telefon raqam kiritilishi shart'
             });
         }
 
+        const phone = normalizePhone(rawPhone);
         const user = await User.findByPhone(phone);
 
         if (!user || !user.is_verified) {
@@ -201,15 +214,16 @@ const login = async (req, res) => {
 // @route   POST /api/auth/login/verify
 const loginVerify = async (req, res) => {
     try {
-        const { phone, code } = req.body;
+        const { phone: rawPhone, code } = req.body;
 
-        if (!phone || !code) {
+        if (!rawPhone || !code) {
             return res.status(400).json({
                 success: false,
                 message: 'Telefon raqam va kod kiritilishi shart'
             });
         }
 
+        const phone = normalizePhone(rawPhone);
         const user = await User.findByPhone(phone, true); // true = OTP fieldlarni ham olish
 
         if (!user) {
