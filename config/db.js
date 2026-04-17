@@ -28,15 +28,31 @@ const createTables = async () => {
                 artist VARCHAR(100) NOT NULL,
                 genre VARCHAR(50) DEFAULT 'Boshqa',
                 duration INTEGER DEFAULT 0,
-                file_path TEXT NOT NULL,
+                file_path TEXT,
                 file_name TEXT NOT NULL,
                 file_size INTEGER DEFAULT 0,
+                file_data BYTEA,
+                mime_type VARCHAR(50) DEFAULT 'audio/mpeg',
                 cover_image TEXT,
                 user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
                 plays INTEGER DEFAULT 0,
                 created_at TIMESTAMPTZ DEFAULT NOW()
             );
         `);
+
+    // Yangi ustunlarni qo'shish (agar jadval allaqachon mavjud bo'lsa)
+    await client.query(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='music' AND column_name='file_data') THEN
+          ALTER TABLE music ADD COLUMN file_data BYTEA;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='music' AND column_name='mime_type') THEN
+          ALTER TABLE music ADD COLUMN mime_type VARCHAR(50) DEFAULT 'audio/mpeg';
+        END IF;
+      END $$;
+    `);
+
     console.log('✅ PostgreSQL jadvallar tayyor');
   } finally {
     client.release();

@@ -16,13 +16,16 @@ const createMusic = async (req, res) => {
         const { title, artist, genre, duration } = req.body;
 
         if (!title || !artist) {
-            // Faylni o'chirish
-            fs.unlinkSync(req.file.path);
+            // Vaqtinchalik faylni o'chirish
+            try { fs.unlinkSync(req.file.path); } catch (e) { }
             return res.status(400).json({
                 success: false,
                 message: 'Musiqa nomi va ijrochi kiritilishi shart'
             });
         }
+
+        // Faylni o'qib, bazaga yozamiz (Render ephemeral filesystem muammosini hal qilish)
+        const fileBuffer = fs.readFileSync(req.file.path);
 
         const music = await Music.create({
             title,
@@ -32,13 +35,28 @@ const createMusic = async (req, res) => {
             file_path: req.file.path,
             file_name: req.file.originalname,
             file_size: req.file.size,
+            file_data: fileBuffer,
+            mime_type: req.file.mimetype || 'audio/mpeg',
             user_id: req.user.id
         });
+
+        // Vaqtinchalik faylni o'chiramiz (endi bazada saqlanadi)
+        try { fs.unlinkSync(req.file.path); } catch (e) { }
 
         res.status(201).json({
             success: true,
             message: 'Musiqa muvaffaqiyatli yuklandi',
-            data: music
+            data: {
+                id: music.id,
+                title: music.title,
+                artist: music.artist,
+                genre: music.genre,
+                duration: music.duration,
+                file_name: music.file_name,
+                file_size: music.file_size,
+                plays: music.plays,
+                created_at: music.created_at
+            }
         });
     } catch (error) {
         console.error('Create music xato:', error);
@@ -193,15 +211,6 @@ const deleteMusic = async (req, res) => {
             });
         }
 
-        // Faylni diskdan o'chirish
-        if (music.file_path) {
-            try {
-                fs.unlinkSync(music.file_path);
-            } catch (e) {
-                console.log('Fayl o\'chirishda xato (fayl mavjud emas bo\'lishi mumkin):', e.message);
-            }
-        }
-
         await Music.delete(req.params.id);
 
         res.status(200).json({
@@ -216,11 +225,11 @@ const deleteMusic = async (req, res) => {
     }
 };
 
-// @desc    Musiqani stream qilish
+// @desc    Musiqani stream qilish (bazadan)
 // @route   GET /api/music/:id/stream
 const streamMusic = async (req, res) => {
     try {
-        const music = await Music.findByIdSimple(req.params.id);
+        const music = await Music.findByIdWithData(req.params.id);
 
         if (!music) {
             return res.status(404).json({
@@ -229,21 +238,19 @@ const streamMusic = async (req, res) => {
             });
         }
 
-        const filePath = path.resolve(music.file_path);
-
-        // Fayl mavjudligini tekshirish
-        if (!fs.existsSync(filePath)) {
+        if (!music.file_data) {
             return res.status(404).json({
                 success: false,
-                message: 'Audio fayl topilmadi'
+                message: 'Audio fayl topilmadi (bazada mavjud emas)'
             });
         }
 
-        const stat = fs.statSync(filePath);
-        const fileSize = stat.size;
-
         // Tinglash sonini oshirish
         await Music.incrementPlays(req.params.id);
+
+        const fileBuffer = music.file_data;
+        const fileSize = fileBuffer.length;
+        const mimeType = music.mime_type || 'audio/mpeg';
 
         // Range header bilan streaming (audio seeking uchun)
         const range = req.headers.range;
@@ -254,23 +261,22 @@ const streamMusic = async (req, res) => {
             const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
             const chunkSize = (end - start) + 1;
 
-            const fileStream = fs.createReadStream(filePath, { start, end });
-
             res.writeHead(206, {
                 'Content-Range': `bytes ${start}-${end}/${fileSize}`,
                 'Accept-Ranges': 'bytes',
                 'Content-Length': chunkSize,
-                'Content-Type': 'audio/mpeg'
+                'Content-Type': mimeType
             });
 
-            fileStream.pipe(res);
+            res.end(fileBuffer.slice(start, end + 1));
         } else {
             res.writeHead(200, {
                 'Content-Length': fileSize,
-                'Content-Type': 'audio/mpeg'
+                'Content-Type': mimeType,
+                'Accept-Ranges': 'bytes'
             });
 
-            fs.createReadStream(filePath).pipe(res);
+            res.end(fileBuffer);
         }
     } catch (error) {
         console.error('Stream xato:', error);
